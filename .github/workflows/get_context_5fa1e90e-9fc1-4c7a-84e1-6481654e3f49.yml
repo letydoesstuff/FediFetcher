@@ -1,0 +1,50 @@
+name: getAllRepliesToKnownPosts_5fa1e90e
+concurrency: get_context_5fa1e90e
+
+on:
+  workflow_dispatch:
+  schedule:
+     - cron: '3,13,23,33,43,53 * * * *'
+     
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: mastodon
+    steps:
+      - name: Checkout original repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+         python-version: '3.10'
+         cache: 'pip' # caching pip dependencies
+      - run: pip install -r requirements.txt
+      - name: Download all workflow run artifacts
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: artifacts
+          workflow: get_context.yml
+          if_no_artifact_found: warn
+          path: artifacts
+      - name: Fill Config Server from Secret
+        uses: jacobtomlinson/gha-find-replace@v2
+        with:
+          find: "\"server\": \"\","
+          replace: "\"server\": \"${{ secrets.CONFIG_SERVER_5fa1e90e }}\","
+          regex: true
+          include: 'config.json'
+      - name: Get Directory structure
+        run: ls -lR
+      - run: python find_posts.py --lock-hours=0 --access-token=${{ secrets.ACCESS_TOKEN_5fa1e90e }} -c="./config.json"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: |
+            artifacts
+      - name: Checkout user's forked repository for keeping workflow alive
+        uses: actions/checkout@v4
+      - name: Keep workflow alive
+        uses: gautamkrishnar/keepalive-workflow@v1
