@@ -9,7 +9,7 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    environment: mastodon
+    environment: mastodon_882e352c-faaa-4dbd-8079-27e70d84fce0
     steps:
       - name: Checkout original repository
         uses: actions/checkout@v4
@@ -28,16 +28,9 @@ jobs:
           workflow: get_context.yml
           if_no_artifact_found: warn
           path: artifacts
-      - name: Fill Config Server from Secret
-        uses: jacobtomlinson/gha-find-replace@v2
-        with:
-          find: "\"server\": \"\","
-          replace: "\"server\": \"${{ secrets.CONFIG_SERVER_882e352c }}\","
-          regex: true
-          include: 'config.json'
       - name: Get Directory structure
         run: ls -lR
-      - run: python find_posts.py --lock-hours=0 --access-token=${{ secrets.ACCESS_TOKEN_882e352c }} -c="./config.json"
+      - run: python find_posts.py --lock-hours=0 --access-token=${{ secrets.ACCESS_TOKEN }} --server=${{ secrets.SERVER }} -c="./config.json"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
