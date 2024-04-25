@@ -533,6 +533,10 @@ def parse_user_url(url):
     match = parse_mastodon_profile_url(url)
     if match is not None:
         return match
+
+    match = parse_mastodon_profile_redirect(url)
+    if match is not None:
+        return match
     
     match = parse_pleroma_profile_url(url)
     if match is not None:
@@ -554,6 +558,11 @@ def parse_user_url(url):
 def parse_url(url, parsed_urls):
     if url not in parsed_urls:
         match = parse_mastodon_url(url)
+        if match is not None:
+            parsed_urls[url] = match
+
+    if url not in parsed_urls:
+        match = parse_mastodon_redirect(url)
         if match is not None:
             parsed_urls[url] = match
 
@@ -597,6 +606,18 @@ def parse_mastodon_profile_url(url):
         return (match.group("server"), match.group("username"))
     return None
 
+def parse_mastodon_profile_redirect(url):
+    """parse a Mastodon Profile Redirect URL and return the server and username"""
+    if re.match(r"https://[^/]+/redirect/accounts/\d+", url):
+        try:
+            r = requests.get(url, timeout=5, headers={'User-Agent': 'FediFetcher (https://go.thms.uk/mgr)'})
+            target_url = re.findall(r'(?<=noreferrer noopener\" href=\")[^\"]*', r.text)[0]
+            return parse_mastodon_profile_url(target_url)
+        except Exception as ex:
+            logger.error(f"Error parsing redirect page for url {url}: {ex}")
+            return None
+    return None
+
 def parse_mastodon_url(url):
     """parse a Mastodon URL and return the server and ID"""
     match = re.match(
@@ -604,6 +625,18 @@ def parse_mastodon_url(url):
     )
     if match is not None:
         return (match.group("server"), match.group("toot_id"))
+    return None
+
+def parse_mastodon_redirect(url):
+    """parse a Mastodon Redirect URL and return the server and username"""
+    if re.match(r"https://[^/]+/redirect/statuses/\d+", url):
+        try:
+            r = requests.get(url, timeout=5, headers={'User-Agent': 'FediFetcher (https://go.thms.uk/mgr)'})
+            target_url = re.findall(r'(?<=noreferrer noopener\" href=\")[^\"]*', r.text)[0]
+            return parse_mastodon_url(target_url)
+        except Exception as ex:
+            logger.error(f"Error parsing redirect page for url {url}: {ex}")
+            return None
     return None
 
 def parse_mastodon_uri(uri):
